@@ -47,7 +47,7 @@ fi
 
 compile() {
       vai_c_tensorflow2 \
-            --model           build/quant_model/q_model.h5 \
+            --model           weights/q_model.h5 \
             --arch            $ARCH \
             --output_dir      build/compiled_$TARGET \
             --net_name        customcnn

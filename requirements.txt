@@ -3,3 +3,5 @@ pandas
 rasterio
 scikit-learn
 tqdm
+xir
+opencv-python

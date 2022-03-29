@@ -306,10 +306,10 @@ To run step 2:
 ```shell
 (vitis-ai-tensorflow2) Vitis-AI /workspace > python -u quantize.py --evaluate 2>&1 | tee quantize.log
 ```
+Output (quantize.log):
 
 ```shell
-Killed
-(vitis-ai-tensorflow2) Vitis-AI /workspace > python quantize_inference.py 
+(vitis-ai-tensorflow2) Vitis-AI /workspace > python quantize.py 
 
 ------------------------------------
 TensorFlow version :  2.6.0
@@ -352,9 +352,9 @@ P: : 0.857589885220564  R:  0.9423925603151843  IoU:  0.814871436825886  F-score
 Evaluating float model..
 -----------------------------------------
 
-
 ```
-The Xilinx DPU family of ML accelerators execute CNN models that have their parameters in integer format so we must convert the trained, floating-point checkpoint into a fixed-point integer checkpoint - this process is known as quantization.
+The Xilinx DPU family of ML accelerators execute CNN models that have their parameters in integer format so we must 
+convert the trained, floating-point checkpoint into a fixed-point integer checkpoint - this process is known as quantization.
 
 The `quantize.py` script will do the following:
 
