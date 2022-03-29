@@ -49,7 +49,7 @@ def make_target(target_dir, image_dir, input_height, input_width, num_images, ap
     print('Resizing and copying', num_images, 'images...')
     for i in tqdm(range(num_images)):
         image = cv2.imread(os.path.join(image_dir, images[i]))
-        image = cv2.resize(image, (input_width, input_height),interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(image, (input_width, input_height), interpolation=cv2.INTER_CUBIC)
         cv2.imwrite(os.path.join(target_dir, 'images', images[i]), image)
 
     # copy application code
@@ -57,7 +57,7 @@ def make_target(target_dir, image_dir, input_height, input_width, num_images, ap
     shutil.copy(os.path.join(app_dir, 'app_mt.py'), target_dir)
 
     # copy compiled model
-    print('Copying compiled model from',model,'...')
+    print('Copying compiled model from', model, '...')
     shutil.copy(model, target_dir)
 
     return
@@ -69,31 +69,32 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('-t', '--target_dir', type=str,  default='build/target',
                     help='Full path of target folder. Default is build/target')
-    ap.add_argument('-i', '--image_dir',  type=str,  default='build/dataset/test',
+    ap.add_argument('-i', '--image_dir', type=str,  default='build/dataset/test',
                     help='Full path of images folder. Default is build/dataset/test')
-    ap.add_argument('-ih','--input_height',type=int, default=200,  help='Input image height in pixels.')
-    ap.add_argument('-iw','--input_width', type=int, default=250,  help='Input image width in pixels.')
-    ap.add_argument('-n', '--num_images', type=int,  default=1000, help='Number of test images. Default is 1000')
     ap.add_argument('-a', '--app_dir',    type=str,  default='application',
                     help='Full path of application code folder. Default is application')
     ap.add_argument('-m', '--model',      type=str,  default='build/compiled_model/customcnn.xmodel',
-                    help='Full path of compiled model.Default is build/compiled_model/customcnn.xmodel')
+                    help='Full path of compiled model. Default is build/compiled_model/customcnn.xmodel')
+    ap.add_argument('-ih', '--input_height', type=int, default=200,  help='Input image height in pixels.')
+    ap.add_argument('-iw', '--input_width', type=int, default=250,  help='Input image width in pixels.')
+    ap.add_argument('-n', '--num_images', type=int,  default=1000, help='Number of test images. Default is 1000')
     args = ap.parse_args()  
 
     print('\n------------------------------------')
     print(sys.version)
     print('------------------------------------')
-    print ('Command line options:')
-    print (' --target_dir   : ', args.target_dir)
-    print (' --image_dir    : ', args.image_dir)
-    print (' --input_height : ', args.input_height)
-    print (' --input_width  : ', args.input_width)
-    print (' --num_images   : ', args.num_images)
-    print (' --app_dir      : ', args.app_dir)
-    print (' --model        : ', args.model)
+    print('Command line options:')
+    print(' --target_dir   : ', args.target_dir)
+    print(' --image_dir    : ', args.image_dir)
+    print(' --input_height : ', args.input_height)
+    print(' --input_width  : ', args.input_width)
+    print(' --num_images   : ', args.num_images)
+    print(' --app_dir      : ', args.app_dir)
+    print(' --model        : ', args.model)
     print('------------------------------------\n')
 
-    make_target(args.target_dir, args.image_dir, args.input_height, args.input_width, args.num_images, args.app_dir, args.model)
+    make_target(args.target_dir, args.image_dir, args.input_height,
+                args.input_width, args.num_images, args.app_dir, args.model)
 
 
 if __name__ ==  "__main__":

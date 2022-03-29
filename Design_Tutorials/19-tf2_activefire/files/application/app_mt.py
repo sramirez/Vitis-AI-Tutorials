@@ -26,6 +26,7 @@ import argparse
 
 divider = '------------------------------------'
 
+
 def preprocess_fn(image_path, fix_scale):
     '''
     Image pre-processing.
@@ -56,8 +57,9 @@ def get_child_subgraph_dpu(graph: "Graph") -> List["Subgraph"]:
     ]
 
 
-def runDPU(id, start,dpu,img):
-    '''get tensor'''
+def run_dpu(id, start, dpu, imgs):
+
+    """get tensor"""
     inputTensors = dpu.get_input_tensors()
     outputTensors = dpu.get_output_tensors()
     input_ndim = tuple(inputTensors[0].dims)
@@ -67,33 +69,33 @@ def runDPU(id, start,dpu,img):
     #output_fixpos = outputTensors[0].get_attr("fix_point")
     #output_scale = 1 / (2**output_fixpos)
 
-    batchSize = input_ndim[0]
-    n_of_images = len(img)
+    batch_size = input_ndim[0]
+    n_of_images = len(imgs)
     count = 0
-    write_index = start
-    ids=[]
+    ids = []
     ids_max = 50
-    outputData = []
+    output_data = []
     for i in range(ids_max):
-        outputData.append([np.empty(output_ndim, dtype=np.int8, order="C")])
+        output_data.append([np.empty(output_ndim, dtype=np.int8, order="C")])
+
     while count < n_of_images:
-        if (count+batchSize<=n_of_images):
-            runSize = batchSize
+        if count+batch_size <= n_of_images:
+            run_size = batch_size
         else:
-            runSize=n_of_images-count
+            run_size = n_of_images - count
 
         '''prepare batch input/output '''
-        inputData = []
-        inputData = [np.empty(input_ndim, dtype=np.int8, order="C")]
+        input_data = [np.empty(input_ndim, dtype=np.int8, order="C")]
 
         '''init input image to input buffer '''
-        for j in range(runSize):
-            imageRun = inputData[0]
-            imageRun[j, ...] = img[(count + j) % n_of_images].reshape(input_ndim[1:])
+        for j in range(run_size):
+            image_run = input_data[0]
+            image_run[j, ...] = imgs[(count + j) % n_of_images].reshape(input_ndim[1:])
+
         '''run with batch '''
-        job_id = dpu.execute_async(inputData, outputData[len(ids)])
-        ids.append((job_id, runSize, start+count))
-        count = count + runSize 
+        job_id = dpu.execute_async(input_data, output_data[len(ids)])
+        ids.append((job_id, run_size, start+count))
+        count = count + run_size
         if count < n_of_images:
             if len(ids) < ids_max-1:
                 continue
@@ -103,24 +105,28 @@ def runDPU(id, start,dpu,img):
             '''store output vectors '''
             for j in range(ids[index][1]):
                 # we can avoid output scaling if use argmax instead of softmax
-                # out_q[write_index] = np.argmax(outputData[0][j] * output_scale)
-                out_q[write_index] = np.argmax(outputData[index][0][j])
+                # out_q[write_index] = np.argmax(output_data[0][j] * output_scale)
+                out_q[write_index] = np.argmax(output_data[index][0][j])
                 write_index += 1
-        ids=[]
+        ids = []
 
 
 def app(image_dir, threads, model):
 
     listimage = os.listdir(image_dir)
-    runTotal = len(listimage)
+    run_total = len(listimage)
 
     global out_q
-    out_q = [None] * runTotal
+    out_q = [None] * run_total
     g = xir.Graph.deserialize(model)
+    print("hola2")
     subgraphs = get_child_subgraph_dpu(g)
+
     all_dpu_runners = []
     for i in range(threads):
         all_dpu_runners.append(vart.Runner.create_runner(subgraphs[0], "run"))
+
+    print("hola3")
 
     # input scaling
     input_fixpos = all_dpu_runners[0].get_input_tensors()[0].get_attr("fix_point")
@@ -128,15 +134,15 @@ def app(image_dir, threads, model):
 
     ''' preprocess images '''
     print(divider)
-    print('Pre-processing', runTotal, 'images...')
+    print('Pre-processing', run_total, 'images...')
     img = []
-    for i in range(runTotal):
+    for i in range(run_total):
         path = os.path.join(image_dir, listimage[i])
         img.append(preprocess_fn(path, input_scale))
 
     '''run threads '''
     print('Starting', threads, 'threads...')
-    threadAll = []
+    thread_all = []
     start = 0
     for i in range(threads):
         if i == threads - 1:
@@ -144,32 +150,31 @@ def app(image_dir, threads, model):
         else:
             end = start+(len(img)//threads)
         in_q = img[start:end]
-        t1 = threading.Thread(target=runDPU, args=(i,start,all_dpu_runners[i], in_q))
-        threadAll.append(t1)
-        start=end
+        t1 = threading.Thread(target=run_dpu, args=(i, start, all_dpu_runners[i], in_q))
+        thread_all.append(t1)
+        start = end
 
     time1 = time.time()
-    for x in threadAll:
+    for x in thread_all:
         x.start()
-    for x in threadAll:
+    for x in thread_all:
         x.join()
     time2 = time.time()
     timetotal = time2 - time1
 
-    fps = float(runTotal / timetotal)
-    print (divider)
-    print("Throughput=%.2f fps, total frames = %.0f, time=%.4f seconds" %(fps, runTotal, timetotal))
-
+    fps = float(run_total / timetotal)
+    print(divider)
+    print("Throughput=%.2f fps, total frames = %.0f, time=%.4f seconds" % (fps, run_total, timetotal))
 
     ''' post-processing '''
-    classes = ['dog','cat']
+    classes = ['dog', 'cat']
     correct = 0
     wrong = 0
-    print('Post-processing',len(out_q),'images..')
+    print('Post-processing', len(out_q), 'images..')
     for i in range(len(out_q)):
         prediction = classes[out_q[i]]
-        ground_truth, _ = listimage[i].split('.',1)
-        if (ground_truth==prediction):
+        ground_truth, _ = listimage[i].split('.', 1)
+        if ground_truth == prediction:
             correct += 1
         else:
             wrong += 1
@@ -197,9 +202,8 @@ def main():
     print(' --threads   : ', args.threads)
     print(' --model     : ', args.model)
 
-    app(args.image_dir, args.threads, args.model)
+    app('../data/patches', args.threads, '../build/compiled_vck190/customcnn.xmodel')
 
 
 if __name__ == '__main__':
     main()
-
